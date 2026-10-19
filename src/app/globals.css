@@ -1,0 +1,1895 @@
+/* ───────────── Compounds (the colour themes) ─────────────
+   Each tyre compound is a whole livery: background, text, an accent, the glow behind the
+   car, the car's two paint colours and the stripe on its tyres. A new one needs a block
+   here and an entry in src/lib/race.ts. */
+:root,
+[data-theme="soft"] {
+  /* Rosso: scarlet and white on black. */
+  --bg: #08080a;
+  --fg: #f4f2ed;
+  --accent: #ff3021;
+  --on-accent: #ffffff;
+  --glow: rgba(225, 20, 6, 0.24);
+  --car: #d40500;
+  --car-2: #f5f3ee;
+  --on-car: #ffffff;
+  --tyre: #ff3021;
+  color-scheme: dark;
+}
+
+[data-theme="medium"] {
+  /* Giallo: yellow and black on warm charcoal. */
+  --bg: #0b0a07;
+  --fg: #f6f1e4;
+  --accent: #ffc81a;
+  --on-accent: #0b0a07;
+  --glow: rgba(255, 176, 0, 0.2);
+  --car: #f0b800;
+  --car-2: #101012;
+  --on-car: #101012;
+  --tyre: #ffc81a;
+  color-scheme: dark;
+}
+
+[data-theme="hard"] {
+  /* The hard tyre is marked white, so this is the daylight livery: silver with a red blade. */
+  --bg: #e9e8e3;
+  --fg: #0c0c0e;
+  --accent: #e10600;
+  --on-accent: #ffffff;
+  --glow: rgba(255, 255, 255, 0.9);
+  --car: #b9bdc4;
+  --car-2: #e10600;
+  --on-car: #0c0c0e;
+  --tyre: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme="inter"] {
+  /* Racing green with gold. */
+  --bg: #040c08;
+  --fg: #eff4ea;
+  --accent: #3fe27a;
+  --on-accent: #04120a;
+  --glow: rgba(20, 150, 80, 0.26);
+  --car: #0a5a36;
+  --car-2: #d8b14a;
+  --on-car: #f3e3b0;
+  --tyre: #3fe27a;
+  color-scheme: dark;
+}
+
+[data-theme="wet"] {
+  /* Night blue with a cyan blade. */
+  --bg: #04070f;
+  --fg: #edf2fb;
+  --accent: #38a4ff;
+  --on-accent: #04101f;
+  --glow: rgba(30, 110, 255, 0.26);
+  --car: #0c2f96;
+  --car-2: #2bd4ff;
+  --on-car: #ffffff;
+  --tyre: #38a4ff;
+  color-scheme: dark;
+}
+:root {
+  --muted: color-mix(in srgb, var(--fg) 60%, transparent);
+  --line: color-mix(in srgb, var(--fg) 15%, transparent);
+  --panel: color-mix(in srgb, var(--fg) 5%, var(--bg));
+  /* Timing colours. These mean the same in every scheme. */
+  --purple: #b45cff;
+  --green: #2fe36d;
+  --yellow: #ffd21f;
+  --pad: clamp(18px, 4.4vw, 72px);
+  --ease: cubic-bezier(0.19, 1, 0.22, 1);
+  --display: var(--font-display), "Arial Narrow", Impact, sans-serif;
+  --body: var(--font-body), "Segoe UI", Arial, sans-serif;
+  --mono: var(--font-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  scrollbar-gutter: stable;
+  transition: background-color 0.5s var(--ease), color 0.5s var(--ease);
+}
+
+/* Held on the grid until the lights go out. */
+html.on-grid,
+html.on-grid body {
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-x: clip;
+}
+
+/* Atmosphere behind everything: a pool of the livery's colour where the car sits and a
+   second one low on the other side. Plain gradients only. Masks, blurs and grain over a
+   canvas that redraws every frame cost far more than they are worth. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(58vw 62vh at 74% 44%, var(--glow), transparent 72%),
+    radial-gradient(46vw 50vh at 4% 100%, color-mix(in srgb, var(--glow) 55%, transparent), transparent 70%);
+  opacity: 0.6;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+ul,
+ol,
+dl,
+dd,
+p,
+h1,
+h2,
+h3 {
+  margin: 0;
+  padding: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+em {
+  font-style: inherit;
+  color: var(--accent);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ───────────── The car's canvas ───────────── */
+.stage {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* The tallest the viewport gets, so a phone's sliding address bar never resizes it. */
+  height: 100lvh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* With reduced motion the car is a still picture that scrolls away with the first screen. */
+html.calm .stage {
+  position: absolute;
+  height: 100svh;
+}
+
+main {
+  position: relative;
+  z-index: 2;
+}
+
+/* ───────────── Top bar ───────────── */
+.bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2vw, 30px);
+  padding: 14px var(--pad) 34px;
+  background: linear-gradient(var(--bg) 52%, transparent);
+  pointer-events: none;
+}
+
+.bar > * {
+  pointer-events: auto;
+}
+
+.bar__id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.bar__id b {
+  padding: 1px 9px 1px 7px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 900;
+  font-size: 22px;
+  clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%);
+}
+
+.bar__links {
+  display: flex;
+  gap: clamp(12px, 1.8vw, 26px);
+  margin-left: auto;
+}
+
+.bar__links a {
+  position: relative;
+  color: var(--muted);
+  transition: color 0.3s;
+}
+
+.bar__links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.45s var(--ease);
+}
+
+.bar__links a:hover,
+.bar__links a.is-on {
+  color: var(--fg);
+}
+
+.bar__links a:hover::after,
+.bar__links a.is-on::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Tyre compounds: the theme switch. Each button is a tyre with its sidewall colour. */
+.tyres {
+  display: flex;
+  gap: 6px;
+}
+
+.tyre {
+  --c: #ff2b1c;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #17181b 0 42%, var(--c) 43% 58%, #0c0c0e 59% 100%);
+  box-shadow: 0 0 0 1px var(--line);
+  transition: transform 0.4s var(--ease), box-shadow 0.3s;
+}
+
+.tyre span {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--c);
+}
+
+.tyre[data-compound="medium"],
+.pitstop[data-compound="medium"] {
+  --c: #ffd21f;
+}
+
+.tyre[data-compound="hard"],
+.pitstop[data-compound="hard"] {
+  --c: #f4f4f1;
+}
+
+.tyre[data-compound="inter"],
+.pitstop[data-compound="inter"] {
+  --c: #35e06a;
+}
+
+.tyre[data-compound="wet"],
+.pitstop[data-compound="wet"] {
+  --c: #2e8dff;
+}
+
+.tyre:hover {
+  transform: rotate(40deg) scale(1.08);
+}
+
+.tyre[aria-checked="true"] {
+  transform: scale(1.16);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--c);
+}
+
+/* The pit stop: a slanted band in the new compound's colour crosses the screen. */
+.pitstop {
+  --c: #ff2b1c;
+  position: fixed;
+  inset: 0 -20vw;
+  z-index: 95;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--c);
+  color: #0a0a0c;
+  pointer-events: none;
+  animation: pit 1.15s var(--ease) both;
+}
+
+.pitstop__time {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(120px, 24vw, 360px);
+  line-height: 0.85;
+}
+
+.pitstop__time small {
+  font-size: 0.4em;
+}
+
+@keyframes pit {
+  0% {
+    transform: translateX(-105%) skewX(-12deg);
+  }
+  36%,
+  60% {
+    transform: translateX(0) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(105%) skewX(-12deg);
+  }
+}
+
+/* ───────────── HUD ───────────── */
+.hud__clock {
+  position: fixed;
+  top: 12px;
+  left: calc(var(--pad) + 236px);
+  z-index: 31;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.hud__state {
+  color: var(--muted);
+}
+
+.hud__state[data-state="best"] {
+  color: var(--purple);
+}
+
+.hud__time {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.hud__sectors {
+  display: flex;
+  gap: 4px;
+}
+
+.hud__sectors span,
+.finish__sectors span {
+  padding: 1px 6px;
+  background: var(--line);
+  font-size: 10px;
+  color: var(--muted);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+[data-mark="purple"] {
+  background: var(--purple) !important;
+  color: #0a0a0c !important;
+}
+
+[data-mark="green"] {
+  background: var(--green) !important;
+  color: #0a0a0c !important;
+}
+
+[data-mark="yellow"] {
+  background: var(--yellow) !important;
+  color: #0a0a0c !important;
+}
+
+.dock {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 18px 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  /* Nearly solid, and no glass blur: a blur over a canvas that redraws every frame is
+     one of the costliest things a page can ask for. */
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
+  transform: translateX(-50%);
+}
+
+.dock__map {
+  width: 92px;
+  height: 66px;
+  overflow: visible;
+}
+
+.map__road {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 9;
+  stroke-linejoin: round;
+}
+
+.map__line {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 4;
+}
+
+.map__done {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.map__flag {
+  stroke: var(--fg);
+  stroke-width: 3;
+  stroke-dasharray: 3 3;
+}
+
+.map__turn circle {
+  fill: var(--bg);
+  stroke: var(--muted);
+  stroke-width: 1.4;
+  transition: fill 0.3s, stroke 0.3s;
+}
+
+.map__turn.is-on circle {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.map__car path {
+  fill: var(--fg);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+  paint-order: stroke;
+}
+
+.dock__corner {
+  display: flex;
+  flex-direction: column;
+  min-width: 86px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.dock__corner b {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+}
+
+.dock__dash {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+
+.dash__leds {
+  display: flex;
+  gap: 3px;
+}
+
+.dash__leds i {
+  width: 9px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--line);
+}
+
+/* Shift lights, in the order a steering wheel shows them: green, red, then blue. */
+.dash__leds i.is-on {
+  background: var(--green);
+}
+
+.dash__leds i.is-on:nth-child(n + 6) {
+  background: #ff2b1c;
+}
+
+.dash__leds i.is-on:nth-child(n + 10) {
+  background: #3c8cff;
+}
+
+.dash__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.dash__gear {
+  width: 24px;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 34px;
+  line-height: 0.8;
+  text-align: center;
+}
+
+.dash__speed {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.dash__speed b {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash__speed small {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.dash__drs {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  font-size: 9px;
+  color: var(--muted);
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.dash__drs.is-on {
+  background: var(--green);
+  border-color: var(--green);
+  color: #0a0a0c;
+}
+
+/* ───────────── Start lights ───────────── */
+.lights {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  background: var(--bg);
+  transition: transform 0.75s var(--ease) 0.28s;
+}
+
+html.js .lights {
+  display: flex;
+}
+
+/* A reload in the same visit skips the ceremony. */
+html[data-seen] .lights {
+  display: none;
+}
+
+.lights__gantry {
+  display: flex;
+  gap: clamp(8px, 1.6vw, 20px);
+  padding: clamp(10px, 1.6vw, 20px);
+  border-radius: 14px;
+  background: #101114;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.lights__pod {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.2vw, 14px);
+  padding: clamp(8px, 1.2vw, 14px);
+  border-radius: 999px;
+  background: #060607;
+}
+
+.lights__pod i {
+  width: clamp(34px, 6.4vw, 78px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #1c0d0d;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.05);
+}
+
+.lights__pod.is-on i {
+  background: radial-gradient(circle at 40% 35%, #ff8a80, #ff1a12 45%, #a30500);
+  box-shadow: 0 0 34px 6px rgba(255, 30, 20, 0.6), inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+.lights__call {
+  color: var(--muted);
+}
+
+.lights__out {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(40px, 8vw, 120px);
+  line-height: 0.9;
+  text-transform: uppercase;
+  opacity: 0;
+}
+
+.lights__out span {
+  color: var(--accent);
+}
+
+.lights.is-out {
+  transform: translateY(-101%);
+}
+
+.lights.is-out .lights__pod i {
+  background: #1c0d0d;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.05);
+}
+
+.lights.is-out .lights__call {
+  opacity: 0;
+}
+
+.lights.is-out .lights__out {
+  opacity: 1;
+}
+
+/* ───────────── Shared pieces ───────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 11px 22px;
+  border: 1px solid var(--line);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  /* Skewing upright type gives it the slant of a race number. */
+  transform: skewX(-12deg);
+  transition: background-color 0.35s var(--ease), color 0.35s var(--ease), border-color 0.35s var(--ease);
+}
+
+.btn:hover {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+.btn--solid {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: var(--muted);
+}
+
+.eyebrow b {
+  padding: 1px 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
+
+.title {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: clamp(46px, 6.2vw, 104px);
+  line-height: 0.86;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.lead {
+  margin-top: 24px;
+  max-width: 48ch;
+  font-size: clamp(16px, 1.25vw, 19px);
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--fg) 84%, transparent);
+  text-wrap: pretty;
+}
+
+.lead--small {
+  color: var(--muted);
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+}
+
+.live::before,
+.tag i {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+    transform: scale(0.7);
+  }
+}
+
+/* Things slide in the first time they are seen. Without scripts they are simply there. */
+html.js .reveal {
+  opacity: 0;
+  transform: translate3d(-28px, 0, 0);
+  transition: opacity 0.8s var(--ease), transform 0.9s var(--ease);
+  transition-delay: calc(var(--d, 0) * 70ms);
+}
+
+html.js .reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ───────────── 00 Lights out ───────────── */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 110px var(--pad) 170px;
+  overflow: hidden;
+}
+
+/* The race number, huge and hollow, behind everything. */
+.hero__num {
+  position: absolute;
+  right: -0.04em;
+  top: 50%;
+  z-index: -1;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: min(62vw, 110vh);
+  line-height: 0.74;
+  letter-spacing: -0.04em;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--line);
+  transform: translateY(-52%);
+  user-select: none;
+}
+
+.hero__copy {
+  max-width: 640px;
+}
+
+.tag {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+}
+
+.hero__name {
+  margin-top: 18px;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(78px, 13.5vw, 240px);
+  line-height: 0.78;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+}
+
+.hero__name span {
+  display: block;
+}
+
+.hero__name span + span {
+  padding-left: 0.32em;
+  color: var(--accent);
+}
+
+.hero__role {
+  margin-top: 26px;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(18px, 1.9vw, 28px);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.hero__role b {
+  margin: 0 6px;
+  color: var(--accent);
+}
+
+.hero__intro {
+  margin-top: 12px;
+  max-width: 40ch;
+  font-size: clamp(16px, 1.25vw, 19px);
+  color: var(--muted);
+}
+
+.hero__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 30px;
+  padding-left: 6px;
+}
+
+/* A timing-screen row along the bottom of the first screen. */
+.hero__strip {
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  bottom: 104px;
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.hero__strip span {
+  padding: 9px 18px;
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.hero__strip span:first-child {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-right: 0;
+}
+
+.hero__strip b {
+  color: var(--fg);
+}
+
+.hero__strip span:first-child b {
+  color: inherit;
+}
+
+.hero__strip small {
+  font-size: inherit;
+  opacity: 0.7;
+}
+
+.hero__strip .hero__go {
+  margin-left: auto;
+  border-right: 0;
+  color: var(--fg);
+}
+
+/* The first screen's words wait for the lights. If the lights never run, they still arrive. */
+html.js .hero__copy > *,
+html.js .hero__strip {
+  animation: rise 0.9s var(--ease) 5s both;
+}
+
+html.js.is-racing .hero__copy > *,
+html.js.is-racing .hero__strip {
+  animation-delay: calc(var(--i, 0) * 80ms + 120ms);
+}
+
+.hero__copy > :nth-child(2) {
+  --i: 1;
+}
+
+.hero__copy > :nth-child(3) {
+  --i: 2;
+}
+
+.hero__copy > :nth-child(4) {
+  --i: 3;
+}
+
+.hero__copy > :nth-child(5) {
+  --i: 4;
+}
+
+.hero__strip {
+  --i: 6;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(-40px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ───────────── Scenes that share the screen with the car ───────────── */
+.scene {
+  position: relative;
+  min-height: 150vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20vh var(--pad);
+}
+
+.scene__body {
+  width: min(540px, 100%);
+}
+
+/* These headings share the screen with the car, so they run a size down. */
+.scene .title {
+  font-size: clamp(42px, 5vw, 84px);
+}
+
+.scene--right .scene__body {
+  margin-left: auto;
+}
+
+.scene__note {
+  position: absolute;
+  left: var(--pad);
+  top: calc(50% + 31vh);
+  color: var(--muted);
+}
+
+.sheet {
+  margin-top: 32px;
+  border-top: 1px solid var(--line);
+}
+
+.sheet > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.sheet dt {
+  padding-top: 3px;
+  color: var(--muted);
+}
+
+.sheet dd {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Telemetry: four numbers off the resume. */
+.band {
+  position: relative;
+  padding: 0 var(--pad);
+}
+
+.telemetry {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+}
+
+.telemetry li {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 20px 0 0;
+}
+
+.telemetry li + li {
+  padding-left: 20px;
+  border-left: 1px solid var(--line);
+}
+
+.telemetry__value {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(54px, 7vw, 116px);
+  line-height: 0.82;
+  font-variant-numeric: tabular-nums;
+}
+
+.telemetry li:first-child .telemetry__value {
+  color: var(--accent);
+}
+
+.telemetry__label {
+  max-width: 22ch;
+  color: var(--muted);
+}
+
+/* The car's systems */
+.systems {
+  margin-top: 30px;
+  border-top: 1px solid var(--line);
+}
+
+.system {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  outline-offset: 6px;
+}
+
+.system__no {
+  padding-top: 6px;
+  color: var(--muted);
+}
+
+.system__name {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 27px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  transition: color 0.3s;
+}
+
+.system__name small {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.system__items {
+  margin-top: 6px;
+  color: var(--muted);
+  transition: color 0.3s;
+}
+
+@media (hover: hover) {
+  .system {
+    transition: opacity 0.4s;
+  }
+
+  .systems:hover .system:not(:hover) {
+    opacity: 0.38;
+  }
+
+  .system:hover .system__name {
+    color: var(--accent);
+  }
+
+  .system:hover .system__items {
+    color: var(--fg);
+  }
+}
+
+/* ───────────── Full-width chapters ───────────── */
+.wide {
+  position: relative;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 22vh var(--pad) 18vh;
+}
+
+.wide__head {
+  margin-bottom: 7vh;
+}
+
+/* Season: one row per team, set like a results sheet. */
+.rounds {
+  display: grid;
+  gap: 14px;
+}
+
+.round {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  gap: clamp(16px, 2.6vw, 40px);
+  padding: clamp(18px, 2.4vw, 32px);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+}
+
+.round__tag {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+}
+
+.round__tag b {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(54px, 6vw, 88px);
+  line-height: 0.8;
+  color: var(--fg);
+}
+
+.round__tag .live {
+  margin-top: 8px;
+}
+
+.round__main h3 {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: clamp(28px, 3.2vw, 50px);
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.round__main h3 a {
+  transition: color 0.3s;
+}
+
+.round__main h3 span {
+  display: inline-block;
+  color: var(--accent);
+  transition: transform 0.45s var(--ease);
+}
+
+.round__main h3 a:hover {
+  color: var(--accent);
+}
+
+.round__main h3 a:hover span {
+  transform: translate(4px, -4px);
+}
+
+.round__role {
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Promotions inside one team, as steps along a line. */
+.path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 0;
+  margin-top: 14px;
+  color: var(--muted);
+}
+
+.path li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.path li + li::before {
+  content: "→";
+  margin: 0 12px;
+  color: var(--accent);
+}
+
+.path b {
+  color: var(--fg);
+}
+
+.round__points {
+  display: grid;
+  gap: 8px;
+  max-width: 70ch;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.round__points li,
+.slot__points li {
+  position: relative;
+  padding-left: 18px;
+}
+
+.round__points li::before,
+.slot__points li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 8px;
+  height: 6px;
+  background: var(--accent);
+  clip-path: polygon(0 0, 55% 0, 100% 50%, 55% 100%, 0 100%, 45% 50%);
+}
+
+.round__when {
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.licences {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin-top: 26px;
+}
+
+.licences li:not(.licences__title) {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  font-weight: 600;
+}
+
+.licences a:hover {
+  color: var(--accent);
+}
+
+.licences small,
+.licences__title {
+  color: var(--muted);
+}
+
+.licences__title {
+  margin-right: 6px;
+}
+
+/* The grid: each project on its own slot, staggered left and right like a real start. */
+.startgrid {
+  display: grid;
+  gap: clamp(26px, 5vh, 54px);
+}
+
+.slot {
+  display: grid;
+  grid-template-columns: clamp(64px, 8vw, 116px) minmax(0, 1fr);
+  gap: clamp(14px, 2vw, 28px);
+  width: min(100%, 940px);
+}
+
+.slot:nth-child(even) {
+  margin-left: auto;
+}
+
+/* The painted box a car lines up in: three white lines, open at the back. */
+.slot__box {
+  display: flex;
+  justify-content: center;
+  align-self: start;
+  height: clamp(96px, 11vw, 160px);
+  padding-top: 14px;
+  border: 4px solid var(--fg);
+  border-bottom: 0;
+}
+
+.slot__box b {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(28px, 3.4vw, 50px);
+  line-height: 1;
+}
+
+.slot__card {
+  padding: clamp(18px, 2.4vw, 32px);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+}
+
+.slot__kind {
+  color: var(--muted);
+}
+
+.slot__name {
+  margin-top: 8px;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: clamp(34px, 4.4vw, 68px);
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.slot__stat {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.slot__stat b {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(44px, 5vw, 76px);
+  line-height: 0.85;
+  color: var(--accent);
+}
+
+.slot__stat span {
+  color: var(--muted);
+}
+
+.slot__points {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+  color: color-mix(in srgb, var(--fg) 80%, transparent);
+}
+
+.slot__stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.slot__stack li {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+/* What GitHub knows about the repository. */
+.slot__repo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.langbar {
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  height: 4px;
+}
+
+.langbar i {
+  background: var(--accent);
+}
+
+.slot__repo a {
+  margin-left: auto;
+  color: var(--fg);
+  text-transform: none;
+  transition: color 0.3s;
+}
+
+.slot__repo a:hover {
+  color: var(--accent);
+}
+
+/* The rest of the garage, as a timing sheet. */
+.paddock {
+  margin-top: 12vh;
+}
+
+.paddock__title {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--fg);
+}
+
+.paddock__title span {
+  color: var(--muted);
+  text-transform: none;
+}
+
+.paddock__list a {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 170px 100px 20px;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 8px;
+  border-bottom: 1px solid var(--line);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.paddock__name {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.paddock__pos,
+.paddock__lang,
+.paddock__when {
+  color: var(--muted);
+}
+
+.paddock__list a:hover {
+  background: var(--panel);
+  color: var(--accent);
+}
+
+/* ───────────── T13 Pit wall ───────────── */
+.radio {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 44vh var(--pad) 0;
+  text-align: center;
+}
+
+/* The empty stretch above is where the car crosses the finish line, drawn in the 3D scene. */
+.radio::before {
+  content: "Sector 3 · Finish line";
+  position: absolute;
+  top: 0;
+  left: var(--pad);
+  right: var(--pad);
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--muted);
+}
+
+.radio .eyebrow {
+  margin-bottom: 14px;
+}
+
+.radio__call {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(60px, 11vw, 190px);
+  line-height: 0.82;
+  text-transform: uppercase;
+}
+
+/* Team radio: a strip of bars that never sits still. */
+.radio__wave {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  margin-top: 22px;
+}
+
+.radio__wave i {
+  width: 3px;
+  height: 100%;
+  background: var(--accent);
+  transform: scaleY(0.2);
+  animation: talk 1.1s ease-in-out infinite;
+  animation-delay: calc(var(--n) * -0.137s);
+}
+
+.radio__wave i:nth-child(3n) {
+  animation-duration: 0.8s;
+}
+
+.radio__wave i:nth-child(4n) {
+  animation-duration: 1.4s;
+}
+
+@keyframes talk {
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.radio .lead {
+  margin-top: 18px;
+  color: var(--muted);
+}
+
+.radio__email {
+  margin-top: 14px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--accent);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(24px, 4vw, 60px);
+  line-height: 1.1;
+  transition: color 0.3s;
+}
+
+.radio__email:hover {
+  color: var(--accent);
+}
+
+.radio__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+/* The result board: your own lap of the page. */
+.finish {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2vw, 28px);
+  width: min(100%, 860px);
+  margin-top: 46px;
+  padding: 14px 22px 14px 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  text-align: left;
+}
+
+.finish__flag {
+  align-self: stretch;
+  width: 64px;
+  min-height: 64px;
+  flex-shrink: 0;
+  background: repeating-conic-gradient(var(--fg) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px;
+}
+
+.finish__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.finish__label {
+  color: var(--muted);
+}
+
+.finish.is-in .finish__label {
+  color: var(--fg);
+}
+
+.finish__time {
+  font-family: var(--mono);
+  font-size: clamp(26px, 3.4vw, 44px);
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.finish__sectors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  width: 100%;
+  margin-top: 54px;
+  padding: 18px 0 96px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  text-align: left;
+}
+
+/* ───────────── Narrow bars and small screens ───────────── */
+@media (max-width: 1180px) {
+  .bar__links {
+    display: none;
+  }
+
+  .tyres {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  /* On a phone the bar and the lap timer under it sit on a solid strip, so the page
+     never shows through behind them. */
+  .bar {
+    padding-bottom: 52px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hud__clock {
+    top: 58px;
+    left: var(--pad);
+  }
+
+  .finish {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+  }
+
+  .finish__flag {
+    width: 100%;
+    min-height: 16px;
+    height: 16px;
+    background-size: 16px 16px;
+  }
+
+  .finish .btn {
+    justify-content: center;
+    transform: none;
+  }
+
+  .dock {
+    gap: 10px;
+    padding: 6px 12px 6px 8px;
+  }
+
+  .dock__corner {
+    display: none;
+  }
+
+  .dock__map {
+    width: 70px;
+    height: 50px;
+  }
+
+  .hero {
+    justify-content: flex-end;
+    padding-bottom: 150px;
+  }
+
+  .hero__name {
+    font-size: 24vw;
+  }
+
+  .hero__strip {
+    display: none;
+  }
+
+  /* The car sits in the top of the screen, so the words start below it. */
+  .scene {
+    min-height: 0;
+    justify-content: flex-start;
+    padding: 58vh var(--pad) 14vh;
+  }
+
+  .scene--right .scene__body {
+    margin-left: 0;
+  }
+
+  .scene__note {
+    display: none;
+  }
+
+  .telemetry {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .telemetry li:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .telemetry li:nth-child(n + 3) {
+    margin-top: 22px;
+    border-top: 1px solid var(--line);
+  }
+
+  .wide {
+    padding-top: 14vh;
+  }
+
+  .round {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .round__tag {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .round__when {
+    order: -1;
+    text-align: left;
+  }
+
+  .slot {
+    grid-template-columns: 1fr;
+  }
+
+  .slot__box {
+    justify-content: flex-start;
+    padding: 6px 12px;
+    border-width: 3px;
+    border-bottom: 0;
+  }
+
+  .paddock__list a {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+  }
+
+  .paddock__lang,
+  .paddock__list a > :last-child {
+    display: none;
+  }
+
+  .radio {
+    padding-top: 40vh;
+  }
+
+}
+
+/* ───────────── Reduced motion ───────────── */
+@media (prefers-reduced-motion: reduce) {
+  .lights,
+  .pitstop {
+    display: none !important;
+  }
+
+  .live::before,
+  .tag i,
+  .radio__wave i {
+    animation: none;
+  }
+
+  html.js .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  html.js .hero__copy > *,
+  html.js .hero__strip {
+    animation: none;
+  }
+}
+
+/* ───────────── Type ─────────────
+   One family, Saira, at two widths. Headlines are set wide, the way the sport's own
+   lettering is. Labels, numbers and buttons are set narrow, like a timing screen. */
+.hero__name,
+.title,
+.radio__call,
+.slot__name,
+.round__main h3,
+.lights__out,
+.pitstop__time {
+  font-stretch: 122%;
+  letter-spacing: -0.035em;
+}
+
+.btn,
+.bar__id,
+.dock__corner b,
+.dash__gear,
+.system__name,
+.paddock__name,
+.hero__role,
+.telemetry__value,
+.slot__stat b,
+.round__tag b,
+.slot__box b,
+.hero__num,
+.radio__email {
+  font-stretch: 76%;
+}
+
+.hero__name {
+  font-size: clamp(52px, 8.5vw, 158px);
+  line-height: 0.86;
+}
+
+.title {
+  font-size: clamp(34px, 4.5vw, 76px);
+  line-height: 0.92;
+}
+
+.scene .title {
+  font-size: clamp(30px, 3.5vw, 60px);
+}
+
+.radio__call {
+  font-size: clamp(40px, 7.6vw, 132px);
+  line-height: 0.88;
+}
+
+.slot__name {
+  font-size: clamp(26px, 3.1vw, 50px);
+}
+
+.round__main h3 {
+  font-size: clamp(22px, 2.5vw, 40px);
+  line-height: 1;
+}
+
+.lights__out {
+  font-size: clamp(30px, 5.6vw, 90px);
+}
+
+@media (max-width: 900px) {
+  .hero__name {
+    font-size: 15.5vw;
+  }
+}
